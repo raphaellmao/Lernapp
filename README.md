@@ -20,6 +20,7 @@ Die übrigen Dateien sind der Bauplan dahinter.
 | `style.css` | Gestaltung, hell und dunkel |
 | `app.js` | Ablauflogik: Auswahl, Leitner, Lexikon, Statistik |
 | `daten/pack01…13.js` | die Wörter, nach Bereichen gebündelt |
+| `ids-vergeben.ps1` | vergibt feste Nummern an neue Wörter |
 | `bauen.ps1` | fügt alles zu `wortschatz-trainer.html` zusammen |
 
 Die Ordnerfassung (`index.html`) lässt sich ebenso doppelklicken und ist
@@ -73,20 +74,57 @@ vor, falsch fällt es zurück in Fach 1.
 „Klug (fällige + neue)“ nimmt zuerst, was fällig ist, und mischt etwa ein
 Drittel frische Wörter dazu.
 
+## Feste Wortnummern
+
+Jedes Wort trägt als erstes Feld eine feste Nummer:
+
+```javascript
+[42,"Wort","Bedeutung","Beispielsatz mit dem Wort darin.","Herkunft"],
+```
+
+Diese Nummer ist der Schlüssel, unter dem der Lernstand gespeichert wird — **nicht**
+die Position im Array und **nicht** der Wortlaut. Daraus folgt:
+
+- Zeilen umsortieren, einfügen oder löschen lässt alle anderen Nummern unberührt.
+- Selbst wenn Sie später einen Tippfehler im Stichwort korrigieren, bleibt der
+  Lernstand an der Karte hängen.
+- Nummern werden nie neu vergeben: gelöschte Nummern bleiben frei, der Zähler
+  läuft nur vorwärts.
+
+Ein früher gespeicherter Lernstand aus der Zeit vor den Nummern wird beim ersten
+Start automatisch übertragen; dasselbe gilt für ältere Sicherungsdateien beim
+Einspielen. Einträge, die sich nicht zuordnen lassen, bleiben unangetastet
+stehen statt gelöscht zu werden.
+
+Unter *Einstellungen → Wortschatz* zeigt die App den belegten Nummernbereich und
+meldet Dubletten.
+
 ## Wörter ändern oder ergänzen
 
-In `daten/` eine Zeile nach demselben Muster einfügen:
+In `daten/` eine Zeile einfügen — **ohne** Nummer, die vergibt das Skript:
 
 ```javascript
 ["Wort","Bedeutung","Beispielsatz mit dem Wort darin.","Herkunft"],
 ```
 
 Der Beispielsatz sollte das Stichwort wirklich enthalten — die App hebt es
-hervor und erkennt dabei auch gebeugte Formen. Danach neu bauen:
+hervor und erkennt dabei auch gebeugte Formen.
+
+Danach zwei Schritte, in dieser Reihenfolge:
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\ids-vergeben.ps1
+```
 
 ```bash
 powershell -ExecutionPolicy Bypass -File .\bauen.ps1
 ```
+
+`ids-vergeben.ps1` trägt die nächste freie Nummer nach, bricht bei doppelt
+vergebenen Nummern ab und setzt ans Ende jeder Eintragszeile ein Komma. Das
+Komma ist kein Schönheitsfehler: ohne es wäre die letzte Zeile ein Sonderfall,
+und ein Umsortieren würde die Liste zerreißen. Mehrfaches Ausführen ist
+gefahrlos — bestehende Nummern rührt das Skript nicht an.
 
 Das Skript zählt die Wörter mit und meldet, wenn ein Verweis nicht eingebettet
 werden konnte.

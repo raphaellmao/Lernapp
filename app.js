@@ -35,10 +35,16 @@ var THEMA_SCHLUESSEL    = 'wortschatz-trainer-thema';
    2. Wortvorrat aufbereiten
    --------------------------------------------------------- */
 
-var WOERTER = [];   /* bereinigte Liste */
-var NACH_KAT = {};  /* Kategorie -> Wörter */
-var NACH_ID  = {};  /* id -> Wort */
+var WOERTER = [];        /* bereinigte Liste */
+var NACH_KAT = {};       /* Kategorie -> Wörter */
+var NACH_ID  = {};       /* Nummer -> Wort */
+var NACH_SLUG = {};      /* alter Schlüssel aus dem Wortlaut -> Nummer, nur zur Umstellung */
+var DATEN_MAENGEL = [];  /* Wörter ohne oder mit doppelter Nummer */
 
+/* Die Nummer steht fest in den Daten (erstes Feld je Zeile) und wird niemals
+   aus der Position im Array abgeleitet. Umsortieren, Einfügen oder Löschen
+   lässt die Nummern der übrigen Wörter unberührt — der Lernstand bleibt
+   deshalb auch dann zugeordnet, wenn ein Stichwort später korrigiert wird. */
 function datenAufbereiten() {
   var gesehen = {};
   var roh = window.WORTSCHATZ || [];
@@ -47,8 +53,17 @@ function datenAufbereiten() {
     var e = roh[i];
     if (!e || !e.w || !e.d) continue;
 
-    var id = e.w.toLowerCase().replace(/\s+/g, ' ').trim();
-    if (gesehen[id]) continue;          /* Doppelte still verwerfen */
+    var nr = e.id;
+    if (typeof nr !== 'number' || !isFinite(nr) || nr <= 0 || Math.floor(nr) !== nr) {
+      DATEN_MAENGEL.push('„' + e.w + '“ hat keine gültige Nummer');
+      continue;
+    }
+
+    var id = String(nr);
+    if (gesehen[id]) {
+      DATEN_MAENGEL.push('Nummer ' + id + ' ist doppelt vergeben („' + e.w + '“)');
+      continue;
+    }
     gesehen[id] = true;
 
     var kat = KATEGORIEN[e.k] ? e.k : 'bildung';
@@ -64,6 +79,7 @@ function datenAufbereiten() {
 
     WOERTER.push(wort);
     NACH_ID[id] = wort;
+    NACH_SLUG[e.w.toLowerCase().replace(/\s+/g, ' ').trim()] = id;
     (NACH_KAT[kat] = NACH_KAT[kat] || []).push(wort);
   }
 
@@ -95,6 +111,42 @@ function leererStand() {
   };
 }
 
+var umstellungsBericht = null;   /* für den Hinweis nach der Umstellung */
+
+/* Früher war der Schlüssel der kleingeschriebene Wortlaut. Diese Stände werden
+   auf die festen Nummern übertragen. Nicht zuordenbare Einträge bleiben
+   unangetastet stehen — es wird nichts verworfen. */
+function kartenUmschluesseln(karten) {
+  var neu = {}, umgestellt = 0, offen = 0;
+
+  for (var k in karten) {
+    if (!Object.prototype.hasOwnProperty.call(karten, k)) continue;
+    var e = karten[k];
+    if (!e || typeof e !== 'object') continue;
+
+    if (/^\d+$/.test(k)) { neu[k] = e; continue; }   /* schon eine Nummer */
+
+    var id = NACH_SLUG[k];
+    if (!id) { neu[k] = e; offen++; continue; }      /* unbekannt: behalten */
+
+    if (neu[id]) {
+      /* Beide Formen vorhanden: zusammenführen statt eine zu überschreiben. */
+      neu[id].r = (neu[id].r || 0) + (e.r || 0);
+      neu[id].f = (neu[id].f || 0) + (e.f || 0);
+      if ((e.letzte || 0) > (neu[id].letzte || 0)) {
+        neu[id].fach    = e.fach;
+        neu[id].letzte  = e.letzte;
+        neu[id].faellig = e.faellig;
+      }
+    } else {
+      neu[id] = e;
+    }
+    umgestellt++;
+  }
+
+  return { karten: neu, umgestellt: umgestellt, offen: offen };
+}
+
 function standLaden() {
   var s = leererStand();
   try {
@@ -102,7 +154,9 @@ function standLaden() {
     if (roh) {
       var geladen = JSON.parse(roh);
       if (geladen && typeof geladen === 'object') {
-        s.karten     = geladen.karten     || {};
+        var um = kartenUmschluesseln(geladen.karten || {});
+        if (um.umgestellt) umstellungsBericht = um;
+        s.karten     = um.karten;
         s.tage       = geladen.tage       || {};
         s.besteSerie = geladen.besteSerie || 0;
         s.sitzungen  = geladen.sitzungen  || 0;
@@ -790,6 +844,20 @@ function einstellungenAufbauen() {
   $('infoAnzahl').textContent = WOERTER.length;
   $('infoBereiche').textContent = KAT_REIHE.length;
 
+  if (DATEN_MAENGEL.length) {
+    $('infoNummern').textContent = DATEN_MAENGEL.length + ' fehlerhaft';
+  } else if (WOERTER.length) {
+    var kleinste = Infinity, groesste = 0;
+    WOERTER.forEach(function (w) {
+      var n = +w.id;
+      if (n < kleinste) kleinste = n;
+      if (n > groesste) groesste = n;
+    });
+    $('infoNummern').textContent = kleinste + '–' + groesste + ', eindeutig';
+  } else {
+    $('infoNummern').textContent = '—';
+  }
+
   var bytes = 0;
   try { bytes = (localStorage.getItem(SPEICHER_SCHLUESSEL) || '').length; } catch (e) {}
   $('infoSpeicher').textContent = bytes ? (bytes / 1024).toFixed(1) + ' KB' : 'noch leer';
@@ -856,7 +924,8 @@ function einspielen(datei) {
     }
 
     var frisch = leererStand();
-    frisch.karten     = neu.karten     || {};
+    var umImport      = kartenUmschluesseln(neu.karten || {});
+    frisch.karten     = umImport.karten;
     frisch.tage       = neu.tage       || {};
     frisch.besteSerie = neu.besteSerie || 0;
     frisch.sitzungen  = neu.sitzungen  || 0;
@@ -876,7 +945,8 @@ function einspielen(datei) {
     einstellungenAnzeigen();
     einstellungenAufbauen();
     startAufbauen();
-    $('sicherungHinweis').textContent = anzahl + ' Wörter eingespielt.';
+    $('sicherungHinweis').textContent = anzahl + ' Wörter eingespielt.' +
+      (umImport.umgestellt ? ' Davon ' + umImport.umgestellt + ' aus einer älteren Sicherung auf feste Nummern übertragen.' : '');
     toast('Lernstand eingespielt.');
   };
   leser.readAsText(datei);
@@ -1069,6 +1139,17 @@ function los() {
 
   if (!WOERTER.length) {
     $('startHinweis').textContent = 'Der Wortvorrat konnte nicht geladen werden. Liegt der Ordner „daten“ neben dieser Datei?';
+  }
+
+  /* Ein einmal übertragener Stand wird sofort in der neuen Form gesichert. */
+  if (umstellungsBericht) {
+    standSichern();
+    toast('Lernstand auf feste Wortnummern übertragen: ' + umstellungsBericht.umgestellt + ' Wörter.');
+  }
+
+  if (DATEN_MAENGEL.length) {
+    console.warn('Wortschatz-Trainer — Mängel im Datenbestand:', DATEN_MAENGEL);
+    toast(DATEN_MAENGEL.length + ' Wörter ohne gültige Nummer wurden übersprungen. Einzelheiten in der Browser-Konsole.');
   }
 }
 

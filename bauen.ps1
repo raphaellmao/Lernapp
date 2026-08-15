@@ -23,7 +23,7 @@ foreach ($i in 1..13) {
     $datei = Join-Path $root "daten\pack$n.js"
     $js    = Lies $datei
     $html  = $html.Replace("<script src=`"daten/pack$n.js`"></script>", "<script>`r`n$js`r`n</script>")
-    $anzahl += ([regex]::Matches($js, '(?m)^\["')).Count
+    $anzahl += ([regex]::Matches($js, '(?m)^\[\d+,"')).Count
 }
 
 # --- Anwendungslogik einbetten ---
