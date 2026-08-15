@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wortschatz-Trainer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-inner">
+    <div class="marke">
+      <span class="marke-zeichen">W</span>
+      <span class="marke-text">Wortschatz-Trainer</span>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-btn aktiv" data-ansicht="ueben">Üben</button>
+      <button class="nav-btn" data-ansicht="lexikon">Lexikon</button>
+      <button class="nav-btn" data-ansicht="statistik">Statistik</button>
+      <button class="nav-btn" data-ansicht="einstellungen">Einstellungen</button>
+    </nav>
+    <button class="thema-btn" id="themaBtn" title="Hell / Dunkel umschalten">◐</button>
+  </div>
+</header>
+
+<main class="huelle">
+
+  <!-- ============ ÜBEN ============ -->
+  <section class="ansicht aktiv" id="ansicht-ueben">
+
+    <!-- Startbildschirm -->
+    <div class="panel start" id="start">
+      <h1 class="start-titel">Bereit zum Üben?</h1>
+      <p class="start-unter" id="startUnter">—</p>
+
+      <div class="start-kacheln" id="startKacheln"></div>
+
+      <div class="start-optionen">
+        <label class="feld">
+          <span class="feld-label">Sitzungslänge</span>
+          <select id="selLaenge">
+            <option value="10">10 Karten</option>
+            <option value="20" selected>20 Karten</option>
+            <option value="30">30 Karten</option>
+            <option value="50">50 Karten</option>
+            <option value="0">ohne Ende</option>
+          </select>
+        </label>
+        <label class="feld">
+          <span class="feld-label">Frageart</span>
+          <select id="selModus">
+            <option value="w2b">Wort → Bedeutung</option>
+            <option value="b2w">Bedeutung → Wort</option>
+            <option value="mix">Gemischt</option>
+          </select>
+        </label>
+        <label class="feld">
+          <span class="feld-label">Auswahl</span>
+          <select id="selAuswahl">
+            <option value="klug">Klug (fällige + neue)</option>
+            <option value="neu">Nur neue Wörter</option>
+            <option value="schwach">Nur Schwachstellen</option>
+            <option value="alle">Alles gemischt</option>
+          </select>
+        </label>
+      </div>
+
+      <button class="btn btn-gross" id="btnStart">Sitzung starten</button>
+      <p class="hinweis" id="startHinweis"></p>
+    </div>
+
+    <!-- Karte -->
+    <div class="panel karte-panel versteckt" id="kartePanel">
+      <div class="fortschritt">
+        <div class="fortschritt-zeile">
+          <span id="fortschrittText">Karte 1</span>
+          <span class="serie" id="serieText"></span>
+        </div>
+        <div class="fortschritt-balken"><div class="fortschritt-fuell" id="fortschrittFuell"></div></div>
+      </div>
+
+      <div class="frage-kopf">
+        <span class="chip" id="chipKategorie">—</span>
+        <span class="chip chip-still" id="chipFach">Fach 1</span>
+      </div>
+
+      <div class="frage" id="frage">—</div>
+      <div class="frage-zusatz" id="frageZusatz"></div>
+
+      <div class="antworten" id="antworten"></div>
+
+      <div class="aufloesung versteckt" id="aufloesung">
+        <div class="afl-block">
+          <div class="afl-titel" id="aflWort">—</div>
+          <div class="afl-bedeutung" id="aflBedeutung">—</div>
+        </div>
+        <div class="afl-block afl-satz">
+          <div class="afl-label">Beispielsatz</div>
+          <div class="afl-text" id="aflSatz">—</div>
+        </div>
+        <div class="afl-block afl-herkunft" id="aflHerkunftBlock">
+          <div class="afl-label">Herkunft</div>
+          <div class="afl-text" id="aflHerkunft">—</div>
+        </div>
+        <button class="btn btn-weiter" id="btnWeiter">Weiter <span class="taste">⏎</span></button>
+      </div>
+
+      <div class="karte-fuss">
+        <button class="link-btn" id="btnAbbruch">Sitzung beenden</button>
+        <span class="tasten-hilfe">Tasten: <b>1–4</b> antworten · <b>⏎</b> weiter</span>
+      </div>
+    </div>
+
+    <!-- Sitzungsende -->
+    <div class="panel ende versteckt" id="endePanel">
+      <h1 class="ende-titel">Sitzung beendet</h1>
+      <div class="ende-quote" id="endeQuote">—</div>
+      <div class="ende-zahlen" id="endeZahlen"></div>
+      <div class="ende-liste-huelle versteckt" id="endeListeHuelle">
+        <div class="ende-liste-titel">Diese Wörter saßen noch nicht</div>
+        <div class="ende-liste" id="endeListe"></div>
+      </div>
+      <div class="ende-knoepfe">
+        <button class="btn" id="btnNochmal">Weiter üben</button>
+        <button class="btn btn-still" id="btnZumStart">Zur Übersicht</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEXIKON ============ -->
+  <section class="ansicht" id="ansicht-lexikon">
+    <div class="panel">
+      <div class="lex-kopf">
+        <input type="search" id="lexSuche" class="suche" placeholder="Wort oder Bedeutung suchen …" autocomplete="off">
+        <select id="lexKategorie" class="lex-select"><option value="">Alle Bereiche</option></select>
+        <select id="lexStand" class="lex-select">
+          <option value="">Jeder Lernstand</option>
+          <option value="neu">Noch nie gesehen</option>
+          <option value="lernen">In Arbeit (Fach 1–3)</option>
+          <option value="sitzt">Sitzt (Fach 4–5)</option>
+          <option value="schwach">Schwachstellen</option>
+        </select>
+      </div>
+      <div class="lex-zaehler" id="lexZaehler">—</div>
+      <div class="lex-liste" id="lexListe"></div>
+      <button class="btn btn-still versteckt" id="lexMehr">Weitere 100 anzeigen</button>
+    </div>
+  </section>
+
+  <!-- ============ STATISTIK ============ -->
+  <section class="ansicht" id="ansicht-statistik">
+    <div class="panel">
+      <h2 class="panel-titel">Überblick</h2>
+      <div class="stat-kacheln" id="statKacheln"></div>
+    </div>
+    <div class="panel">
+      <h2 class="panel-titel">Leitner-Fächer</h2>
+      <p class="panel-unter">Jede richtige Antwort schiebt ein Wort ein Fach höher, jeder Fehler zurück in Fach 1. Höhere Fächer werden seltener abgefragt.</p>
+      <div class="faecher" id="faecher"></div>
+    </div>
+    <div class="panel">
+      <h2 class="panel-titel">Letzte 14 Tage</h2>
+      <div class="verlauf" id="verlauf"></div>
+    </div>
+    <div class="panel">
+      <h2 class="panel-titel">Bereiche</h2>
+      <div class="bereiche" id="bereiche"></div>
+    </div>
+    <div class="panel">
+      <h2 class="panel-titel">Hartnäckigste Wörter</h2>
+      <p class="panel-unter">Sortiert nach Fehlern. Das sind die Kandidaten für den Modus „Nur Schwachstellen“.</p>
+      <div class="wackel-liste" id="wackelListe"></div>
+    </div>
+  </section>
+
+  <!-- ============ EINSTELLUNGEN ============ -->
+  <section class="ansicht" id="ansicht-einstellungen">
+    <div class="panel">
+      <h2 class="panel-titel">Bereiche im Training</h2>
+      <p class="panel-unter">Nur angehakte Bereiche kommen in Sitzungen vor. Das Lexikon zeigt weiterhin alles.</p>
+      <div class="kat-liste" id="katListe"></div>
+      <div class="kat-knoepfe">
+        <button class="btn btn-klein btn-still" id="btnKatAlle">Alle</button>
+        <button class="btn btn-klein btn-still" id="btnKatKeine">Keine</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-titel">Lernstand sichern</h2>
+      <p class="panel-unter">Der Lernstand liegt ausschließlich im Browserspeicher dieses Rechners. Wer den Browserverlauf samt Websitedaten löscht, löscht ihn mit. Ein Export ist die einzige Sicherung.</p>
+      <div class="kat-knoepfe">
+        <button class="btn" id="btnExport">Lernstand exportieren</button>
+        <button class="btn btn-still" id="btnImport">Lernstand einspielen</button>
+        <input type="file" id="importDatei" accept="application/json,.json" hidden>
+      </div>
+      <p class="hinweis" id="sicherungHinweis"></p>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-titel">Wortschatz</h2>
+      <div class="info-zeile"><span>Wörter im Vorrat</span><b id="infoAnzahl">—</b></div>
+      <div class="info-zeile"><span>Bereiche</span><b id="infoBereiche">—</b></div>
+      <div class="info-zeile"><span>Speicherstand</span><b id="infoSpeicher">—</b></div>
+    </div>
+
+    <div class="panel panel-gefahr">
+      <h2 class="panel-titel">Zurücksetzen</h2>
+      <p class="panel-unter">Löscht den gesamten Lernstand: Fächer, Trefferquoten und den Verlauf. Der Wortvorrat bleibt. Das lässt sich nicht rückgängig machen — vorher exportieren.</p>
+      <button class="btn btn-gefahr" id="btnReset">Lernstand löschen</button>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>var WORTSCHATZ = [];</script>
+<script src="daten/pack01.js"></script>
+<script src="daten/pack02.js"></script>
+<script src="daten/pack03.js"></script>
+<script src="daten/pack04.js"></script>
+<script src="daten/pack05.js"></script>
+<script src="daten/pack06.js"></script>
+<script src="daten/pack07.js"></script>
+<script src="daten/pack08.js"></script>
+<script src="daten/pack09.js"></script>
+<script src="daten/pack10.js"></script>
+<script src="daten/pack11.js"></script>
+<script src="daten/pack12.js"></script>
+<script src="daten/pack13.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
