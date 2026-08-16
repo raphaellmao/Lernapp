@@ -1,0 +1,35 @@
+{
+  "id": "./",
+  "name": "Wortschatz-Trainer",
+  "short_name": "Wortschatz",
+  "description": "Karteikarten-Abfrage für Fremdwörter, Fachbegriffe und bildungssprachliche Ausdrücke — 1242 Wörter mit Beispielsatz und Herkunft.",
+  "lang": "de",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#f4f2ee",
+  "background_color": "#f4f2ee",
+  "categories": ["education", "books"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

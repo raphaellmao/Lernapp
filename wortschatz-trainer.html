@@ -2,8 +2,20 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wortschatz-Trainer</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="description" content="Karteikarten-Abfrage für Fremdwörter, Fachbegriffe und bildungssprachliche Ausdrücke.">
+<meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wortschatz">
+<link rel="icon" href="icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icon-192.png">
+
 <style>
 /* ==========================================================
    Wortschatz-Trainer — Gestaltung
@@ -1126,6 +1138,7 @@ select:focus, .suche:focus {
       <div class="info-zeile"><span>Bereiche</span><b id="infoBereiche">—</b></div>
       <div class="info-zeile"><span>Wortnummern</span><b id="infoNummern">—</b></div>
       <div class="info-zeile"><span>Speicherstand</span><b id="infoSpeicher">—</b></div>
+      <div class="info-zeile"><span>Offline-Betrieb</span><b id="infoOffline">—</b></div>
     </div>
 
     <div class="panel panel-gefahr">
@@ -3391,6 +3404,8 @@ function einstellungenAufbauen() {
   var bytes = 0;
   try { bytes = (localStorage.getItem(SPEICHER_SCHLUESSEL) || '').length; } catch (e) {}
   $('infoSpeicher').textContent = bytes ? (bytes / 1024).toFixed(1) + ' KB' : 'noch leer';
+
+  $('infoOffline').textContent = offlineZustand;
 }
 
 function kategorienUebernehmen() {
@@ -3570,7 +3585,55 @@ function tastatur(ev) {
 }
 
 /* ---------------------------------------------------------
-   13. Start
+   13. Offline-Betrieb
+   --------------------------------------------------------- */
+
+var offlineZustand = 'unbekannt';
+
+function offlineEinrichten() {
+  if (!('serviceWorker' in navigator)) {
+    offlineZustand = 'vom Browser nicht unterstützt';
+    return;
+  }
+
+  /* Über file:// erlauben Browser keine Service Worker. Das ist kein Mangel:
+     die Doppelklick-Fassung liegt ohnehin auf der Platte und braucht kein Netz. */
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    offlineZustand = 'entfällt — lokale Datei';
+    return;
+  }
+
+  offlineZustand = 'wird eingerichtet …';
+
+  navigator.serviceWorker.register('sw.js').then(function (reg) {
+    offlineZustand = navigator.serviceWorker.controller ? 'bereit' : 'wird geladen …';
+
+    reg.addEventListener('updatefound', function () {
+      var neuer = reg.installing;
+      if (!neuer) return;
+
+      neuer.addEventListener('statechange', function () {
+        if (neuer.state !== 'installed') return;
+
+        if (navigator.serviceWorker.controller) {
+          /* Es lief schon eine Fassung: die neue übernimmt beim nächsten Start. */
+          offlineZustand = 'neue Fassung liegt bereit';
+          toast('Neue Fassung geladen — beim nächsten Öffnen ist sie aktiv.');
+        } else {
+          offlineZustand = 'bereit';
+          toast('Der Wortschatz ist jetzt auch ohne Netz verfügbar.');
+        }
+        einstellungenAufbauen();
+      });
+    });
+  }).catch(function (fehler) {
+    offlineZustand = 'fehlgeschlagen';
+    console.warn('Service Worker nicht registriert:', fehler);
+  });
+}
+
+/* ---------------------------------------------------------
+   14. Start
    --------------------------------------------------------- */
 
 function verdrahten() {
@@ -3666,6 +3729,7 @@ function los() {
   einstellungenAnzeigen();
   verdrahten();
   startAufbauen();
+  offlineEinrichten();
 
   if (!WOERTER.length) {
     $('startHinweis').textContent = 'Der Wortvorrat konnte nicht geladen werden. Liegt der Ordner „daten“ neben dieser Datei?';

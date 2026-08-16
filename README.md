@@ -20,7 +20,11 @@ Die übrigen Dateien sind der Bauplan dahinter.
 | `style.css` | Gestaltung, hell und dunkel |
 | `app.js` | Ablauflogik: Auswahl, Leitner, Lexikon, Statistik |
 | `daten/pack01…13.js` | die Wörter, nach Bereichen gebündelt |
+| `manifest.json` | Angaben für die Installation als App |
+| `sw.js` | Service Worker für den Offline-Betrieb |
+| `icon-*.png` | App-Symbole |
 | `ids-vergeben.ps1` | vergibt feste Nummern an neue Wörter |
+| `icons-erzeugen.ps1` | erzeugt die Symbole neu |
 | `bauen.ps1` | fügt alles zu `wortschatz-trainer.html` zusammen |
 
 Die Ordnerfassung (`index.html`) lässt sich ebenso doppelklicken und ist
@@ -73,6 +77,45 @@ vor, falsch fällt es zurück in Fach 1.
 
 „Klug (fällige + neue)“ nimmt zuerst, was fällig ist, und mischt etwa ein
 Drittel frische Wörter dazu.
+
+## Als App installieren, Betrieb ohne Netz
+
+Die Ordnerfassung ist eine PWA: über eine Webadresse aufgerufen lässt sie sich
+auf dem Startbildschirm ablegen und läuft danach auch ohne Verbindung.
+
+**Voraussetzung ist HTTPS.** Service Worker sind über `file://` von allen
+Browsern gesperrt — das ist keine Einstellungssache. Für den Offline-Betrieb
+muss die App also von einer Adresse kommen, etwa über GitHub Pages:
+
+> Repository → **Settings** → **Pages** → *Source*: „Deploy from a branch“ →
+> Branch `main`, Ordner `/ (root)` → **Save**
+
+Danach unter `https://<konto>.github.io/Lernapp/` aufrufen, im Browsermenü
+*Zum Startbildschirm hinzufügen* wählen — fertig.
+
+Die Doppelklick-Datei `wortschatz-trainer.html` braucht davon nichts: Sie liegt
+ohnehin auf der Platte und funktioniert ohne Verbindung.
+
+### Was abgelegt wird
+
+Beim ersten Aufruf legt der Service Worker die vollständige Anwendung ab —
+`index.html`, `style.css`, `app.js`, alle 13 Wortpakete, Manifest und Symbole.
+Zusammen rund 300 KB. Ab dem zweiten Aufruf startet die App aus diesem Bestand,
+auch im Flugmodus.
+
+Der Lernstand liegt davon unberührt im localStorage. Der Cache hält die
+Anwendung vor, nicht Ihren Fortschritt.
+
+### Wie Aktualisierungen ankommen
+
+`bauen.ps1` bildet aus dem Inhalt aller abgelegten Dateien eine Kennung und
+stempelt sie in `sw.js`. Ändert sich irgendwo ein Zeichen, ändert sich die
+Kennung und damit der Cachename — der Browser lädt den neuen Stand. Ohne diesen
+Stempel behielte ein Gerät die erste Fassung für immer.
+
+Eine neue Fassung wird im Hintergrund geladen und beim nächsten Öffnen aktiv;
+die App meldet das mit einem kurzen Hinweis. Unter *Einstellungen → Wortschatz*
+steht, woran der Offline-Betrieb gerade ist.
 
 ## Feste Wortnummern
 

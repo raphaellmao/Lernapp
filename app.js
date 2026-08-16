@@ -861,6 +861,8 @@ function einstellungenAufbauen() {
   var bytes = 0;
   try { bytes = (localStorage.getItem(SPEICHER_SCHLUESSEL) || '').length; } catch (e) {}
   $('infoSpeicher').textContent = bytes ? (bytes / 1024).toFixed(1) + ' KB' : 'noch leer';
+
+  $('infoOffline').textContent = offlineZustand;
 }
 
 function kategorienUebernehmen() {
@@ -1040,7 +1042,55 @@ function tastatur(ev) {
 }
 
 /* ---------------------------------------------------------
-   13. Start
+   13. Offline-Betrieb
+   --------------------------------------------------------- */
+
+var offlineZustand = 'unbekannt';
+
+function offlineEinrichten() {
+  if (!('serviceWorker' in navigator)) {
+    offlineZustand = 'vom Browser nicht unterstützt';
+    return;
+  }
+
+  /* Über file:// erlauben Browser keine Service Worker. Das ist kein Mangel:
+     die Doppelklick-Fassung liegt ohnehin auf der Platte und braucht kein Netz. */
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    offlineZustand = 'entfällt — lokale Datei';
+    return;
+  }
+
+  offlineZustand = 'wird eingerichtet …';
+
+  navigator.serviceWorker.register('sw.js').then(function (reg) {
+    offlineZustand = navigator.serviceWorker.controller ? 'bereit' : 'wird geladen …';
+
+    reg.addEventListener('updatefound', function () {
+      var neuer = reg.installing;
+      if (!neuer) return;
+
+      neuer.addEventListener('statechange', function () {
+        if (neuer.state !== 'installed') return;
+
+        if (navigator.serviceWorker.controller) {
+          /* Es lief schon eine Fassung: die neue übernimmt beim nächsten Start. */
+          offlineZustand = 'neue Fassung liegt bereit';
+          toast('Neue Fassung geladen — beim nächsten Öffnen ist sie aktiv.');
+        } else {
+          offlineZustand = 'bereit';
+          toast('Der Wortschatz ist jetzt auch ohne Netz verfügbar.');
+        }
+        einstellungenAufbauen();
+      });
+    });
+  }).catch(function (fehler) {
+    offlineZustand = 'fehlgeschlagen';
+    console.warn('Service Worker nicht registriert:', fehler);
+  });
+}
+
+/* ---------------------------------------------------------
+   14. Start
    --------------------------------------------------------- */
 
 function verdrahten() {
@@ -1136,6 +1186,7 @@ function los() {
   einstellungenAnzeigen();
   verdrahten();
   startAufbauen();
+  offlineEinrichten();
 
   if (!WOERTER.length) {
     $('startHinweis').textContent = 'Der Wortvorrat konnte nicht geladen werden. Liegt der Ordner „daten“ neben dieser Datei?';
