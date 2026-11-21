@@ -1426,6 +1426,12 @@ function offlineEinrichten() {
   navigator.serviceWorker.register('sw.js').then(function (reg) {
     offlineZustand = navigator.serviceWorker.controller ? 'bereit' : 'wird geladen …';
 
+    /* Wartet schon eine neue Fassung aus einem früheren Besuch? Dann feuert
+       updatefound nicht mehr, und ohne diese Abfrage bliebe sie unerwähnt. */
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      offlineZustand = 'neue Fassung wartet — beim nächsten Öffnen aktiv';
+    }
+
     reg.addEventListener('updatefound', function () {
       var neuer = reg.installing;
       if (!neuer) return;
@@ -1435,8 +1441,8 @@ function offlineEinrichten() {
 
         if (navigator.serviceWorker.controller) {
           /* Es lief schon eine Fassung: die neue übernimmt beim nächsten Start. */
-          offlineZustand = 'neue Fassung liegt bereit';
-          toast('Neue Fassung geladen — beim nächsten Öffnen ist sie aktiv.');
+          offlineZustand = 'neue Fassung wartet — beim nächsten Öffnen aktiv';
+          toast('Neue Fassung geladen. Sie wird aktiv, sobald die App einmal ganz geschlossen und neu geöffnet wurde.');
         } else {
           offlineZustand = 'bereit';
           toast('Der Wortschatz ist jetzt auch ohne Netz verfügbar.');

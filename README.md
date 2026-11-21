@@ -160,9 +160,15 @@ stempelt sie in `sw.js`. Ändert sich irgendwo ein Zeichen, ändert sich die
 Kennung und damit der Cachename — der Browser lädt den neuen Stand. Ohne diesen
 Stempel behielte ein Gerät die erste Fassung für immer.
 
-Eine neue Fassung wird im Hintergrund geladen und beim nächsten Öffnen aktiv;
-die App meldet das mit einem kurzen Hinweis. Unter *Einstellungen → Wortschatz*
-steht, woran der Offline-Betrieb gerade ist.
+Eine neue Fassung wird im Hintergrund geladen. Sie wird aktiv, sobald die App
+einmal **ganz geschlossen und neu geöffnet** wurde — nicht schon beim Neuladen
+der Seite. Unter *Einstellungen → Wortschatz* steht, woran der Offline-Betrieb
+gerade ist, auch wenn eine Fassung wartet.
+
+Bis dahin bedient weiterhin die alte Fassung, und zwar **vollständig**: Seite
+und alle Dateien stammen immer aus demselben Bestand. Das ist Absicht. Holte man
+die Seite frisch vom Netz und die Dateien aus dem Cache, bekäme man neues HTML
+mit altem JavaScript — Bedienelemente, hinter denen nichts liegt.
 
 ## Feste Wortnummern
 

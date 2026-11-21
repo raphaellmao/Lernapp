@@ -8,7 +8,7 @@
    installiert den Worker neu — sonst bliebe ein alter Stand ewig liegen.
    ========================================================== */
 
-var BUILD = 'd032f82f2e73';
+var BUILD = '53c8b1f1fa54';
 var CACHE = 'wortschatz-' + BUILD;
 
 /* Ohne diese Dateien läuft die App nicht — schlägt eine fehl, wird nicht
@@ -78,32 +78,38 @@ self.addEventListener('fetch', function (ereignis) {
   if (anfrage.method !== 'GET') return;
   if (new URL(anfrage.url).origin !== self.location.origin) return;
 
-  /* Seitenaufrufe: erst Netz versuchen, damit eine neue Fassung ankommt;
-     ohne Netz die abgelegte Hülle ausliefern. */
-  if (anfrage.mode === 'navigate') {
-    ereignis.respondWith(
-      fetch(anfrage).catch(function () {
-        return caches.match(anfrage).then(function (treffer) {
-          return treffer || caches.match('index.html') || caches.match('./');
-        });
-      })
-    );
-    return;
-  }
+  /* Alles aus GENAU DIESEM Bestand bedienen, auch Seitenaufrufe.
+     Das ist der entscheidende Punkt: Solange ein neuer Worker nur wartet,
+     bedient weiterhin der alte — und zwar vollständig. Holte man die Seite
+     vom Netz und die Dateien aus dem Cache, bekäme man neues HTML mit altem
+     JavaScript. Genau das ist passiert: das Feld war da, die Logik nicht.
 
-  /* Alles Übrige: aus dem Cache, sonst aus dem Netz und dabei ablegen.
-     Der Cachename trägt die Build-Kennung, deshalb ist Cache-first hier sicher. */
+     caches.match() ohne Cache-Angabe durchsucht ausserdem ALLE Bestände und
+     kann aus einem veralteten antworten. Deshalb überall cache.match(). */
   ereignis.respondWith(
-    caches.match(anfrage).then(function (treffer) {
-      if (treffer) return treffer;
+    caches.open(CACHE).then(function (cache) {
 
-      return fetch(anfrage).then(function (antwort) {
-        if (antwort && antwort.ok && antwort.type === 'basic') {
-          var kopie = antwort.clone();
-          caches.open(CACHE).then(function (cache) { cache.put(anfrage, kopie); });
-        }
-        return antwort;
+      if (anfrage.mode === 'navigate') {
+        return cache.match('index.html').then(function (treffer) {
+          if (treffer) return treffer;
+          return cache.match('./').then(function (wurzel) {
+            return wurzel || fetch(anfrage);
+          });
+        });
+      }
+
+      return cache.match(anfrage).then(function (treffer) {
+        if (treffer) return treffer;
+
+        return fetch(anfrage).then(function (antwort) {
+          if (antwort && antwort.ok && antwort.type === 'basic') {
+            cache.put(anfrage, antwort.clone());
+          }
+          return antwort;
+        });
       });
+    }).catch(function () {
+      return fetch(anfrage);
     })
   );
 });
