@@ -1423,7 +1423,12 @@ function offlineEinrichten() {
 
   offlineZustand = 'wird eingerichtet …';
 
-  navigator.serviceWorker.register('sw.js').then(function (reg) {
+  /* updateViaCache: 'none' — das Worker-Skript nie aus dem HTTP-Cache nehmen.
+     GitHub Pages liefert es mit max-age=600 aus; ohne diese Angabe kann der
+     Browser die Registrierung mit einer veralteten Fassung bedienen, während
+     die frische daneben wartet. Ergebnis wäre ein Dauerzustand aus aktivem
+     und wartendem Worker. */
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
     offlineZustand = navigator.serviceWorker.controller ? 'bereit' : 'wird geladen …';
 
     /* Wartet schon eine neue Fassung aus einem früheren Besuch? Dann feuert

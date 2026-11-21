@@ -8,7 +8,7 @@
    installiert den Worker neu — sonst bliebe ein alter Stand ewig liegen.
    ========================================================== */
 
-var BUILD = '53c8b1f1fa54';
+var BUILD = '26a61fe2f51d';
 var CACHE = 'wortschatz-' + BUILD;
 
 /* Ohne diese Dateien läuft die App nicht — schlägt eine fehl, wird nicht
@@ -66,6 +66,21 @@ self.addEventListener('activate', function (ereignis) {
           return caches.delete(name);
         }
       }));
+    }).then(function () {
+      /* Selbstheilung: install läuft für diesen Worker nicht noch einmal.
+         Fehlt der Bestand trotzdem — Websitedaten gelöscht, Installation
+         abgebrochen, Speicher freigeräumt —, wird er hier nachgefüllt.
+         Ohne das bliebe ein Worker aktiv, der nichts auszuliefern hat. */
+      return caches.open(CACHE).then(function (cache) {
+        return cache.keys().then(function (vorhanden) {
+          if (vorhanden.length >= PFLICHT.length) return null;
+          return Promise.all(PFLICHT.map(function (p) {
+            return holenUndAblegen(cache, p).catch(function (fehler) {
+              console.warn('[sw] Nachfüllen fehlgeschlagen:', p, fehler.message);
+            });
+          }));
+        });
+      });
     }).then(function () {
       return self.clients.claim();
     })
