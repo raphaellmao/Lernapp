@@ -897,6 +897,108 @@ select:focus, .suche:focus {
 
 .toast.sichtbar { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- Joker ---------- */
+
+.joker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.joker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border: 1px solid var(--rand-stark);
+  border-radius: 9px;
+  background: var(--flaeche-2);
+  color: var(--akzent);
+  cursor: pointer;
+  transition: border-color .12s, background .12s, opacity .12s;
+}
+
+.joker-btn:hover:not(:disabled) {
+  border-color: var(--akzent);
+  background: var(--akzent-hell);
+}
+
+.joker-btn:active:not(:disabled) { transform: translateY(1px); }
+
+.joker-btn:disabled {
+  opacity: .38;
+  cursor: default;
+  color: var(--text-still);
+}
+
+.joker-still { color: var(--text-leise); font-weight: 500; }
+
+.joker-zahl {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--akzent);
+  color: var(--grund);
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-thema="dunkel"] .joker-zahl { color: #1a1713; }
+.joker-btn:disabled .joker-zahl { background: var(--rand-stark); color: var(--flaeche-2); }
+
+.joker-taste {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  opacity: .5;
+}
+
+.tipp-feld {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--akzent-hell);
+  border: 1px solid color-mix(in srgb, var(--akzent) 28%, transparent);
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  animation: einblenden .18s ease;
+}
+
+.tipp-marke {
+  flex-shrink: 0;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--akzent);
+}
+
+/* Bei 50:50 ausgeblendete Antworten */
+.antwort.raus {
+  opacity: .22;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.ende-hilfe {
+  font-size: 13.5px;
+  color: var(--text-still);
+  margin: -8px 0 18px;
+}
+
 /* ---------- Klein ---------- */
 
 @media (max-width: 620px) {
@@ -909,6 +1011,9 @@ select:focus, .suche:focus {
   .frage { font-size: 30px; }
   .frage.frage-lang { font-size: 21px; }
   .ende-quote { font-size: 48px; }
+  .joker { gap: 6px; }
+  .joker-btn { flex: 1; justify-content: center; padding: 9px 8px; font-size: 13.5px; }
+  .joker-taste { display: none; }
   .fach-name { width: 86px; font-size: 13px; }
   .tasten-hilfe { display: none; }
 }

@@ -101,6 +101,7 @@ function leererStand() {
     tage: {},                   /* "JJJJ-MM-TT" -> [richtig, falsch] */
     besteSerie: 0,
     sitzungen: 0,
+    hilfen: { tipp: 0, fuenfzig: 0, aufgeloest: 0 },   /* genutzte Joker insgesamt */
     bekannteKategorien: KAT_REIHE.slice(),   /* für später ergänzte Bereiche */
     einstellungen: {
       kategorien: KAT_REIHE.slice(),
@@ -160,6 +161,11 @@ function standLaden() {
         s.tage       = geladen.tage       || {};
         s.besteSerie = geladen.besteSerie || 0;
         s.sitzungen  = geladen.sitzungen  || 0;
+        if (geladen.hilfen && typeof geladen.hilfen === 'object') {
+          s.hilfen.tipp       = geladen.hilfen.tipp       || 0;
+          s.hilfen.fuenfzig   = geladen.hilfen.fuenfzig   || 0;
+          s.hilfen.aufgeloest = geladen.hilfen.aufgeloest || 0;
+        }
         var e = geladen.einstellungen || {};
         if (Array.isArray(e.kategorien) && e.kategorien.length) {
           s.einstellungen.kategorien = e.kategorien.filter(function (k) {
@@ -215,16 +221,34 @@ function heuteSchluessel(d) {
   return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (t < 10 ? '0' : '') + t;
 }
 
-/* Verbucht eine Antwort und schiebt das Wort im Leitner-System. */
-function antwortVerbuchen(wort, richtig) {
+function kartenEintrag(wort) {
   var k = stand.karten[wort.id];
   if (!k) k = stand.karten[wort.id] = { fach: 1, r: 0, f: 0, letzte: 0, faellig: 0 };
+  return k;
+}
+
+/* Aufgelöst, ohne zu antworten: zählt weder als Treffer noch als Fehler.
+   Das Fach bleibt, das Wort bleibt fällig und kommt bald wieder. */
+function aufloesungVerbuchen(wort) {
+  var k = kartenEintrag(wort);
+  var jetzt = Date.now();
+  k.letzte  = jetzt;
+  k.faellig = jetzt;
+  return k.fach;
+}
+
+/* Verbucht eine Antwort und schiebt das Wort im Leitner-System.
+   mitHilfe = true, wenn für diese Karte ein Joker gezogen wurde: dann rückt
+   sie trotz richtiger Antwort nicht vor. Sonst entstünde ein Fach 5, das nie
+   ohne Hilfe erreicht wurde, und die Wiederholung käme viel zu spät. */
+function antwortVerbuchen(wort, richtig, mitHilfe) {
+  var k = kartenEintrag(wort);
 
   var vorher = k.fach;
 
   if (richtig) {
     k.r++;
-    k.fach = Math.min(FACH_MAX, k.fach + 1);
+    if (!mitHilfe) k.fach = Math.min(FACH_MAX, k.fach + 1);
   } else {
     k.f++;
     k.fach = 1;
@@ -238,7 +262,7 @@ function antwortVerbuchen(wort, richtig) {
   if (!stand.tage[tag]) stand.tage[tag] = [0, 0];
   stand.tage[tag][richtig ? 0 : 1]++;
 
-  return { vorher: vorher, nachher: k.fach };
+  return { vorher: vorher, nachher: k.fach, gehalten: richtig && mitHilfe };
 }
 
 /* ---------------------------------------------------------
@@ -456,7 +480,11 @@ function sitzungStarten() {
     besteSerie: 0,
     fehler: [],
     beantwortet: false,
-    aktuell: null
+    aktuell: null,
+    hilfe: jokerVorrat(liste.length),
+    tippGezeigt: false,      /* Joker bei DIESER Karte schon gezogen? */
+    fuenfzigGenutzt: false,
+    karteHilfe: false        /* wurde bei dieser Karte überhaupt geholfen? */
   };
 
   stand.sitzungen++;
@@ -480,7 +508,11 @@ function karteZeigen() {
   var optionen = mischen(ablenker(wort, feld).concat([wort]));
 
   sitzung.aktuell = { wort: wort, modus: modus, feld: feld, optionen: optionen };
-  sitzung.beantwortet = false;
+  sitzung.beantwortet     = false;
+  sitzung.tippGezeigt     = false;
+  sitzung.fuenfzigGenutzt = false;
+  sitzung.karteHilfe      = false;
+  $('tippFeld').classList.add('versteckt');
 
   /* Kopfzeile */
   var gesamt = sitzung.liste.length;
@@ -517,6 +549,7 @@ function karteZeigen() {
   });
 
   $('aufloesung').classList.add('versteckt');
+  jokerAnzeigen();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -529,7 +562,7 @@ function antworten(nr) {
   var gewaehlt = a.optionen[nr];
   var richtig = gewaehlt.id === wort.id;
 
-  var schub = antwortVerbuchen(wort, richtig);
+  var schub = antwortVerbuchen(wort, richtig, sitzung.karteHilfe);
 
   if (richtig) {
     sitzung.richtig++;
@@ -553,10 +586,16 @@ function antworten(nr) {
     else                    knoepfe[i].classList.add('blass');
   }
 
-  $('chipFach').textContent = 'Fach ' + schub.vorher + ' → ' + schub.nachher;
+  $('chipFach').textContent = schub.gehalten
+    ? 'Fach ' + schub.nachher + ' — mit Joker, bleibt stehen'
+    : 'Fach ' + schub.vorher + ' → ' + schub.nachher;
   $('serieText').textContent = sitzung.serie >= 3 ? sitzung.serie + ' in Folge' : '';
 
-  /* Auflösung */
+  aufloesungFuellen(wort);
+}
+
+/* Füllt den Auflösungsbereich und zeigt ihn an. */
+function aufloesungFuellen(wort) {
   $('aflWort').textContent = wort.w;
   $('aflBedeutung').textContent = wort.d;
 
@@ -575,8 +614,125 @@ function antworten(nr) {
   }
 
   $('aufloesung').classList.remove('versteckt');
+  jokerAnzeigen();
   $('btnWeiter').focus({ preventScroll: true });
   $('aufloesung').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ---------------------------------------------------------
+   6a. Joker
+   --------------------------------------------------------- */
+
+/* Vorrat je Sitzung, bemessen an der tatsächlichen Kartenzahl: etwa ein Tipp
+   je fünf und ein 50:50 je sieben Karten, mindestens aber zwei davon.
+   Großzügig genug, um nicht zu nerven, knapp genug, dass man ihn sich einteilt.
+   Bei „ohne Ende“ umfasst die Liste den ganzen Vorrat, das Verhältnis bleibt
+   dadurch dasselbe. */
+function jokerVorrat(anzahl) {
+  return {
+    tippFrei:     Math.max(2, Math.round(anzahl / 5)),
+    fuenfzigFrei: Math.max(2, Math.round(anzahl / 7)),
+    tipp: 0, fuenfzig: 0, aufgeloest: 0
+  };
+}
+
+function jokerAnzeigen() {
+  if (!sitzung) return;
+  var h = sitzung.hilfe;
+  var offen = !sitzung.beantwortet;
+
+  $('tippZahl').textContent     = h.tippFrei;
+  $('fuenfzigZahl').textContent = h.fuenfzigFrei;
+
+  $('btnTipp').disabled      = !offen || h.tippFrei <= 0 || sitzung.tippGezeigt;
+  $('btn5050').disabled      = !offen || h.fuenfzigFrei <= 0 || sitzung.fuenfzigGenutzt;
+  $('btnAufloesen').disabled = !offen;
+}
+
+/* Tipp: bei „Wort → Bedeutung“ hilft die Herkunft am meisten. Umgekehrt
+   verriete sie das gesuchte Wort oft direkt — dort gibt es stattdessen die
+   Form: Anfangsbuchstabe und Länge. */
+function jokerTipp() {
+  if (!sitzung || sitzung.beantwortet || sitzung.tippGezeigt) return;
+  if (sitzung.hilfe.tippFrei <= 0) return;
+
+  var a = sitzung.aktuell, wort = a.wort, text;
+
+  if (a.modus === 'b2w') {
+    var kern = wort.w.replace(new RegExp('[^' + BUCHSTABEN + ']', 'g'), '');
+    text = 'Beginnt mit „' + wort.w.charAt(0) + '“ und hat ' +
+           kern.length + ' Buchstaben.';
+  } else if (wort.h) {
+    text = 'Herkunft: ' + wort.h;
+  } else {
+    /* Sollte nicht vorkommen — dann aber auch keinen Joker verbrauchen. */
+    toast('Für dieses Wort ist kein Tipp hinterlegt.');
+    return;
+  }
+
+  $('tippText').textContent = text;
+  $('tippFeld').classList.remove('versteckt');
+
+  sitzung.tippGezeigt = true;
+  sitzung.karteHilfe  = true;
+  sitzung.hilfe.tippFrei--;
+  sitzung.hilfe.tipp++;
+  stand.hilfen.tipp++;
+  standSichern();
+  jokerAnzeigen();
+}
+
+/* 50:50 — zwei falsche Antworten fallen weg. */
+function joker5050() {
+  if (!sitzung || sitzung.beantwortet || sitzung.fuenfzigGenutzt) return;
+  if (sitzung.hilfe.fuenfzigFrei <= 0) return;
+
+  var a = sitzung.aktuell;
+  var falsche = [];
+  a.optionen.forEach(function (opt, i) {
+    if (opt.id !== a.wort.id) falsche.push(i);
+  });
+
+  var weg = mischen(falsche).slice(0, 2);
+  var knoepfe = $('antworten').querySelectorAll('.antwort');
+  weg.forEach(function (i) {
+    knoepfe[i].disabled = true;
+    knoepfe[i].classList.add('raus');
+  });
+
+  sitzung.fuenfzigGenutzt = true;
+  sitzung.karteHilfe      = true;
+  sitzung.hilfe.fuenfzigFrei--;
+  sitzung.hilfe.fuenfzig++;
+  stand.hilfen.fuenfzig++;
+  standSichern();
+  jokerAnzeigen();
+}
+
+/* Aufgeben: zeigt die Lösung, ohne als Fehler zu zählen. Das Wort bleibt
+   fällig und kommt wieder — die Trefferquote bleibt davon unberührt. */
+function jokerAufloesen() {
+  if (!sitzung || sitzung.beantwortet) return;
+  sitzung.beantwortet = true;
+
+  var a = sitzung.aktuell, wort = a.wort;
+  var fach = aufloesungVerbuchen(wort);
+
+  sitzung.hilfe.aufgeloest++;
+  stand.hilfen.aufgeloest++;
+  sitzung.serie = 0;
+  standSichern();
+
+  var knoepfe = $('antworten').querySelectorAll('.antwort');
+  for (var i = 0; i < knoepfe.length; i++) {
+    knoepfe[i].disabled = true;
+    knoepfe[i].classList.remove('raus');
+    knoepfe[i].classList.add(a.optionen[i].id === wort.id ? 'gut' : 'blass');
+  }
+
+  $('chipFach').textContent = 'Fach ' + fach + ' — aufgelöst, bleibt fällig';
+  $('serieText').textContent = '';
+  aufloesungFuellen(wort);
 }
 
 function weiter() {
@@ -597,6 +753,21 @@ function sitzungBeenden() {
     kachel(sitzung.richtig, 'richtig') +
     kachel(sitzung.falsch, 'daneben') +
     kachel(sitzung.besteSerie, 'längste Serie', true);
+
+  var h = sitzung.hilfe;
+  var hilfsText = [];
+  if (h.tipp)       hilfsText.push(h.tipp + '× Tipp');
+  if (h.fuenfzig)   hilfsText.push(h.fuenfzig + '× 50:50');
+  if (h.aufgeloest) hilfsText.push(h.aufgeloest + '× aufgelöst');
+  var hilfeEl = $('endeHilfe');
+  if (hilfsText.length) {
+    hilfeEl.textContent = 'Joker: ' + hilfsText.join(' · ') +
+      ' — mit Joker gelöste Wörter sind nicht vorgerückt.';
+    hilfeEl.classList.remove('versteckt');
+  } else {
+    hilfeEl.textContent = 'Ohne Joker gelöst.';
+    hilfeEl.classList.remove('versteckt');
+  }
 
   if (sitzung.fehler.length) {
     $('endeListe').innerHTML = sitzung.fehler.map(function (f) {
@@ -749,7 +920,8 @@ function statistikAufbauen() {
     kachel(gesR + gesF, 'Antworten insgesamt') +
     kachel(beruehrt + ' / ' + WOERTER.length, 'Wörter angefasst') +
     kachel(stand.besteSerie, 'beste Serie') +
-    kachel(stand.sitzungen, 'Sitzungen');
+    kachel(stand.sitzungen, 'Sitzungen') +
+    kachel(stand.hilfen.tipp + stand.hilfen.fuenfzig + stand.hilfen.aufgeloest, 'Joker genutzt');
 
   /* Leitner-Fächer */
   var namen = ['Fach 1 · täglich', 'Fach 2 · nach 1 Tag', 'Fach 3 · nach 3 Tagen',
@@ -1027,10 +1199,21 @@ function tastatur(ev) {
   if (ev.key >= '1' && ev.key <= '4') {
     var nr = +ev.key - 1;
     if (!sitzung.beantwortet && nr < sitzung.aktuell.optionen.length) {
-      ev.preventDefault();
-      antworten(nr);
+      /* Bei 50:50 ausgeblendete Antworten bleiben auch per Taste gesperrt. */
+      var knopf = $('antworten').querySelectorAll('.antwort')[nr];
+      if (knopf && !knopf.disabled) {
+        ev.preventDefault();
+        antworten(nr);
+      }
     }
     return;
+  }
+
+  if (!sitzung.beantwortet) {
+    var taste = ev.key.toLowerCase();
+    if (taste === 't') { ev.preventDefault(); jokerTipp();      return; }
+    if (taste === 'h') { ev.preventDefault(); joker5050();      return; }
+    if (taste === 'l') { ev.preventDefault(); jokerAufloesen(); return; }
   }
 
   if (ev.key === 'Enter' || ev.key === ' ') {
@@ -1108,6 +1291,9 @@ function verdrahten() {
 
   /* Sitzungssteuerung */
   $('btnStart').addEventListener('click', sitzungStarten);
+  $('btnTipp').addEventListener('click', jokerTipp);
+  $('btn5050').addEventListener('click', joker5050);
+  $('btnAufloesen').addEventListener('click', jokerAufloesen);
   $('btnWeiter').addEventListener('click', weiter);
   $('btnNochmal').addEventListener('click', sitzungStarten);
   $('btnZumStart').addEventListener('click', zurStartansicht);

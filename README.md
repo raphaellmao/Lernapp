@@ -60,7 +60,31 @@ Länge wie die richtige — sonst ließe sich die Lösung an der Form erraten.
 
 Drei Frageweisen: **Wort → Bedeutung**, **Bedeutung → Wort**, **gemischt**.
 
-Tastatur: `1`–`4` antworten, `⏎` weiter.
+Tastatur: `1`–`4` antworten, `⏎` weiter, `T` Tipp, `H` 50:50, `L` Lösung.
+
+## Joker
+
+Über den Antworten liegen drei Hilfen. Tipp und 50:50 haben einen Vorrat je
+Sitzung, der neben dem Knopf mitzählt — etwa ein Tipp je fünf und ein 50:50 je
+sieben Karten, mindestens zwei.
+
+| Joker | Wirkung |
+|---|---|
+| **Tipp** | Bei *Wort → Bedeutung* erscheint die Herkunft, die den Sinn meist schon trägt. Bei *Bedeutung → Wort* verriete sie das Wort, deshalb gibt es dort stattdessen Anfangsbuchstabe und Länge. |
+| **50 : 50** | Zwei falsche Antworten fallen weg. Sie sind auch per Zifferntaste gesperrt. |
+| **Ich weiß es nicht** | Zeigt die Lösung sofort. Unbegrenzt. |
+
+**Jokers kosten etwas — sonst wären sie wertlos:** Ein Wort, das Sie mit Tipp
+oder 50:50 richtig beantworten, **rückt kein Fach vor**. Es bleibt, wo es war,
+und kommt entsprechend bald wieder. Sonst entstünde ein Fach 5, das nie ohne
+Hilfe erreicht wurde, und die Wiederholung käme viel zu spät.
+
+„Ich weiß es nicht“ zählt weder als Treffer noch als Fehler — die Trefferquote
+bleibt unberührt. Das Wort behält sein Fach und bleibt fällig. Die Serie reißt
+dabei allerdings ab.
+
+Am Sitzungsende steht, welche Joker Sie gezogen haben; die Statistik führt sie
+dauerhaft mit.
 
 ## Wiederholung nach Leitner
 

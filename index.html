@@ -100,6 +100,28 @@
       <div class="frage" id="frage">—</div>
       <div class="frage-zusatz" id="frageZusatz"></div>
 
+      <div class="joker" id="joker">
+        <button class="joker-btn" id="btnTipp" type="button">
+          <span class="joker-text">Tipp</span>
+          <span class="joker-zahl" id="tippZahl">0</span>
+          <span class="joker-taste">T</span>
+        </button>
+        <button class="joker-btn" id="btn5050" type="button">
+          <span class="joker-text">50 : 50</span>
+          <span class="joker-zahl" id="fuenfzigZahl">0</span>
+          <span class="joker-taste">H</span>
+        </button>
+        <button class="joker-btn joker-still" id="btnAufloesen" type="button">
+          <span class="joker-text">Ich weiß es nicht</span>
+          <span class="joker-taste">L</span>
+        </button>
+      </div>
+
+      <div class="tipp-feld versteckt" id="tippFeld">
+        <span class="tipp-marke">Tipp</span>
+        <span id="tippText">—</span>
+      </div>
+
       <div class="antworten" id="antworten"></div>
 
       <div class="aufloesung versteckt" id="aufloesung">
@@ -120,7 +142,7 @@
 
       <div class="karte-fuss">
         <button class="link-btn" id="btnAbbruch">Sitzung beenden</button>
-        <span class="tasten-hilfe">Tasten: <b>1–4</b> antworten · <b>⏎</b> weiter</span>
+        <span class="tasten-hilfe">Tasten: <b>1–4</b> antworten · <b>⏎</b> weiter · <b>T</b> Tipp · <b>H</b> 50:50 · <b>L</b> Lösung</span>
       </div>
     </div>
 
@@ -129,6 +151,7 @@
       <h1 class="ende-titel">Sitzung beendet</h1>
       <div class="ende-quote" id="endeQuote">—</div>
       <div class="ende-zahlen" id="endeZahlen"></div>
+      <div class="ende-hilfe versteckt" id="endeHilfe"></div>
       <div class="ende-liste-huelle versteckt" id="endeListeHuelle">
         <div class="ende-liste-titel">Diese Wörter saßen noch nicht</div>
         <div class="ende-liste" id="endeListe"></div>

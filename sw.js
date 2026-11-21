@@ -8,7 +8,7 @@
    installiert den Worker neu — sonst bliebe ein alter Stand ewig liegen.
    ========================================================== */
 
-var BUILD = 'f8717bfc1bd2';
+var BUILD = '4cf974a698a3';
 var CACHE = 'wortschatz-' + BUILD;
 
 /* Ohne diese Dateien läuft die App nicht — schlägt eine fehl, wird nicht
