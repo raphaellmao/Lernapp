@@ -62,6 +62,29 @@ Drei Frageweisen: **Wort → Bedeutung**, **Bedeutung → Wort**, **gemischt**.
 
 Tastatur: `1`–`4` antworten, `⏎` weiter, `T` Tipp, `H` 50:50, `L` Lösung.
 
+## Unterbrochene Sitzung
+
+Wird die Seite mitten in einer Runde neu geladen — Handy gesperrt, Tab zu,
+Browser abgestürzt —, steht beim nächsten Start ein Hinweis mit *Fortsetzen*
+und *Verwerfen*.
+
+Fortgesetzt wird die Karte, bei der Sie waren, und zwar genau so: dieselben vier
+Antwortmöglichkeiten in derselben Reihenfolge, ein gezogener Tipp noch sichtbar,
+die bei 50:50 entfernten Antworten weiterhin entfernt. Ein bezahlter Joker
+verfällt also nicht.
+
+War die Karte bereits beantwortet und nur „Weiter“ noch nicht gedrückt, geht es
+bei der **nächsten** weiter — die Antwort ist ja längst verbucht und zählte
+sonst doppelt.
+
+Der Hinweis erscheint nicht mehr, sobald Sie die Sitzung regulär beenden, eine
+neue starten oder *Verwerfen* drücken. Verwerfen betrifft nur die angefangene
+Runde: alle bis dahin beantworteten Wörter bleiben im Lernstand.
+
+Gespeichert werden nur Wortnummern, keine Texte. Passt der Stand nicht mehr zum
+Wortbestand — etwa weil ein Wort entfernt wurde —, wird er stillschweigend
+verworfen statt mit einem Fehler zu enden.
+
 ## Joker
 
 Über den Antworten liegen drei Hilfen. Tipp und 50:50 haben einen Vorrat je

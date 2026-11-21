@@ -102,6 +102,7 @@ function leererStand() {
     besteSerie: 0,
     sitzungen: 0,
     hilfen: { tipp: 0, fuenfzig: 0, aufgeloest: 0 },   /* genutzte Joker insgesamt */
+    laufendeSitzung: null,      /* unterbrochene Sitzung, zum Fortsetzen */
     bekannteKategorien: KAT_REIHE.slice(),   /* für später ergänzte Bereiche */
     einstellungen: {
       kategorien: KAT_REIHE.slice(),
@@ -161,6 +162,9 @@ function standLaden() {
         s.tage       = geladen.tage       || {};
         s.besteSerie = geladen.besteSerie || 0;
         s.sitzungen  = geladen.sitzungen  || 0;
+        if (geladen.laufendeSitzung && typeof geladen.laufendeSitzung === 'object') {
+          s.laufendeSitzung = geladen.laufendeSitzung;
+        }
         if (geladen.hilfen && typeof geladen.hilfen === 'object') {
           s.hilfen.tipp       = geladen.hilfen.tipp       || 0;
           s.hilfen.fuenfzig   = geladen.hilfen.fuenfzig   || 0;
@@ -484,10 +488,13 @@ function sitzungStarten() {
     hilfe: jokerVorrat(liste.length),
     tippGezeigt: false,      /* Joker bei DIESER Karte schon gezogen? */
     fuenfzigGenutzt: false,
-    karteHilfe: false        /* wurde bei dieser Karte überhaupt geholfen? */
+    karteHilfe: false,       /* wurde bei dieser Karte überhaupt geholfen? */
+    raus: [],                /* bei 50:50 entfernte Antwortplätze */
+    tippText: null
   };
 
   stand.sitzungen++;
+  laufendeSitzungLoeschen();
   standSichern();
 
   $('start').classList.add('versteckt');
@@ -498,20 +505,31 @@ function sitzungStarten() {
   karteZeigen();
 }
 
-function karteZeigen() {
+/* wieder = gespeicherter Kartenstand einer unterbrochenen Sitzung. Dann werden
+   dieselben Antwortmöglichkeiten und bereits gezogene Joker wiederhergestellt,
+   statt die Karte neu zu ziehen — sonst wäre ein bezahlter Joker verfallen. */
+function karteZeigen(wieder) {
   var wort = sitzung.liste[sitzung.pos];
   var e = stand.einstellungen;
+  var modus, feld, optionen;
 
-  var modus = e.modus === 'mix' ? (Math.random() < 0.5 ? 'w2b' : 'b2w') : e.modus;
-  var feld  = modus === 'b2w' ? 'w' : 'd';   /* Feld, aus dem die Antworten kommen */
-
-  var optionen = mischen(ablenker(wort, feld).concat([wort]));
+  if (wieder) {
+    modus    = wieder.modus === 'b2w' ? 'b2w' : 'w2b';
+    feld     = modus === 'b2w' ? 'w' : 'd';
+    optionen = wieder.optionen.map(function (id) { return NACH_ID[id]; });
+  } else {
+    modus    = e.modus === 'mix' ? (Math.random() < 0.5 ? 'w2b' : 'b2w') : e.modus;
+    feld     = modus === 'b2w' ? 'w' : 'd';   /* Feld, aus dem die Antworten kommen */
+    optionen = mischen(ablenker(wort, feld).concat([wort]));
+  }
 
   sitzung.aktuell = { wort: wort, modus: modus, feld: feld, optionen: optionen };
   sitzung.beantwortet     = false;
   sitzung.tippGezeigt     = false;
   sitzung.fuenfzigGenutzt = false;
   sitzung.karteHilfe      = false;
+  sitzung.raus            = [];
+  sitzung.tippText        = null;
   $('tippFeld').classList.add('versteckt');
 
   /* Kopfzeile */
@@ -549,7 +567,28 @@ function karteZeigen() {
   });
 
   $('aufloesung').classList.add('versteckt');
+
+  /* Gezogene Joker der unterbrochenen Karte wieder sichtbar machen */
+  if (wieder) {
+    if (wieder.tipp) {
+      sitzung.tippText    = wieder.tipp;
+      sitzung.tippGezeigt = true;
+      $('tippText').textContent = wieder.tipp;
+      $('tippFeld').classList.remove('versteckt');
+    }
+    if (Array.isArray(wieder.raus) && wieder.raus.length) {
+      sitzung.raus            = wieder.raus.slice();
+      sitzung.fuenfzigGenutzt = true;
+      var knoepfe = box.querySelectorAll('.antwort');
+      wieder.raus.forEach(function (i) {
+        if (knoepfe[i]) { knoepfe[i].disabled = true; knoepfe[i].classList.add('raus'); }
+      });
+    }
+    sitzung.karteHilfe = !!wieder.hilfeGenutzt;
+  }
+
   jokerAnzeigen();
+  sitzungSichern();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -615,12 +654,145 @@ function aufloesungFuellen(wort) {
 
   $('aufloesung').classList.remove('versteckt');
   jokerAnzeigen();
+  sitzungSichern();
   $('btnWeiter').focus({ preventScroll: true });
   $('aufloesung').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 /* ---------------------------------------------------------
-   6a. Joker
+   6a. Unterbrochene Sitzung
+   --------------------------------------------------------- */
+
+/* Nach jedem Schritt wird der Stand der laufenden Sitzung mitgeschrieben.
+   Gespeichert werden nur Wortnummern, nie die Wörter selbst — so bleibt der
+   Eintrag klein und übersteht auch eine Änderung am Wortbestand. */
+function sitzungSichern() {
+  if (!sitzung) return;
+  var a = sitzung.aktuell;
+
+  stand.laufendeSitzung = {
+    ids:        sitzung.liste.map(function (w) { return w.id; }),
+    pos:        sitzung.pos,
+    richtig:    sitzung.richtig,
+    falsch:     sitzung.falsch,
+    serie:      sitzung.serie,
+    besteSerie: sitzung.besteSerie,
+    fehler:     sitzung.fehler.map(function (f) { return [f.wort.id, f.gewaehlt.id]; }),
+    hilfe:      sitzung.hilfe,
+    erledigt:   sitzung.beantwortet,
+    karte: a ? {
+      modus:       a.modus,
+      optionen:    a.optionen.map(function (o) { return o.id; }),
+      tipp:        sitzung.tippText || null,
+      raus:        sitzung.raus.slice(),
+      hilfeGenutzt: sitzung.karteHilfe
+    } : null,
+    zeit: Date.now()
+  };
+  standSichern();
+}
+
+function laufendeSitzungLoeschen() {
+  if (!stand.laufendeSitzung) return;
+  stand.laufendeSitzung = null;
+  standSichern();
+}
+
+/* Liefert den gespeicherten Stand nur, wenn er noch brauchbar ist. pos zeigt
+   danach immer auf die Karte, die als nächste dran wäre. */
+function gespeicherteSitzung() {
+  var g = stand.laufendeSitzung;
+  if (!g || !Array.isArray(g.ids) || !g.ids.length) return null;
+
+  for (var i = 0; i < g.ids.length; i++) {
+    if (!NACH_ID[g.ids[i]]) return null;   /* Wort gibt es nicht mehr */
+  }
+
+  /* War die Karte schon beantwortet, ist die Antwort längst verbucht —
+     fortgesetzt wird dann bei der nächsten, sonst zählte sie doppelt. */
+  var pos = g.erledigt ? g.pos + 1 : g.pos;
+  if (pos < 0 || pos >= g.ids.length) return null;   /* nichts mehr offen */
+
+  var karte = null;
+  if (!g.erledigt && g.karte && Array.isArray(g.karte.optionen) &&
+      g.karte.optionen.every(function (id) { return !!NACH_ID[id]; })) {
+    karte = g.karte;
+  }
+
+  return {
+    ids: g.ids, pos: pos,
+    richtig: g.richtig || 0, falsch: g.falsch || 0,
+    serie: g.serie || 0, besteSerie: g.besteSerie || 0,
+    fehler: Array.isArray(g.fehler) ? g.fehler : [],
+    hilfe: g.hilfe || jokerVorrat(g.ids.length),
+    karte: karte, zeit: g.zeit || 0
+  };
+}
+
+function vorWieLange(zeit) {
+  if (!zeit) return '';
+  var s = Math.max(0, Math.round((Date.now() - zeit) / 1000));
+  if (s < 90) return 'gerade eben';
+  var m = Math.round(s / 60);
+  if (m < 60) return 'vor ' + m + ' Minuten';
+  var h = Math.round(m / 60);
+  if (h < 24) return 'vor ' + h + (h === 1 ? ' Stunde' : ' Stunden');
+  var d = Math.round(h / 24);
+  return 'vor ' + d + (d === 1 ? ' Tag' : ' Tagen');
+}
+
+function fortsetzenAnbieten() {
+  var box = $('fortsetzen');
+  var g = gespeicherteSitzung();
+  if (!g) { box.classList.add('versteckt'); return; }
+
+  var teile = ['Karte ' + (g.pos + 1) + ' von ' + g.ids.length];
+  if (g.richtig + g.falsch) teile.push(g.richtig + ' richtig, ' + g.falsch + ' daneben');
+  var wann = vorWieLange(g.zeit);
+  if (wann) teile.push(wann);
+
+  $('fortsetzenInfo').textContent = teile.join(' · ');
+  box.classList.remove('versteckt');
+}
+
+function sitzungFortsetzen() {
+  var g = gespeicherteSitzung();
+  if (!g) { fortsetzenAnbieten(); return; }
+
+  sitzung = {
+    liste:      g.ids.map(function (id) { return NACH_ID[id]; }),
+    pos:        g.pos,
+    richtig:    g.richtig,
+    falsch:     g.falsch,
+    serie:      g.serie,
+    besteSerie: g.besteSerie,
+    fehler: g.fehler.map(function (f) {
+      return { wort: NACH_ID[f[0]], gewaehlt: NACH_ID[f[1]] };
+    }).filter(function (f) { return f.wort && f.gewaehlt; }),
+    beantwortet: false,
+    aktuell: null,
+    hilfe: g.hilfe,
+    tippGezeigt: false, fuenfzigGenutzt: false, karteHilfe: false,
+    raus: [], tippText: null
+  };
+
+  /* stand.sitzungen wird hier bewusst nicht erhöht — die Sitzung lief schon. */
+  $('start').classList.add('versteckt');
+  $('endePanel').classList.add('versteckt');
+  $('kartePanel').classList.remove('versteckt');
+  $('startHinweis').textContent = '';
+
+  karteZeigen(g.karte);
+}
+
+function sitzungVerwerfen() {
+  laufendeSitzungLoeschen();
+  fortsetzenAnbieten();
+  toast('Unterbrochene Sitzung verworfen. Die bereits beantworteten Wörter bleiben verbucht.');
+}
+
+/* ---------------------------------------------------------
+   6b. Joker
    --------------------------------------------------------- */
 
 /* Vorrat je Sitzung, bemessen an der tatsächlichen Kartenzahl: etwa ein Tipp
@@ -673,13 +845,14 @@ function jokerTipp() {
   $('tippText').textContent = text;
   $('tippFeld').classList.remove('versteckt');
 
+  sitzung.tippText    = text;
   sitzung.tippGezeigt = true;
   sitzung.karteHilfe  = true;
   sitzung.hilfe.tippFrei--;
   sitzung.hilfe.tipp++;
   stand.hilfen.tipp++;
-  standSichern();
   jokerAnzeigen();
+  sitzungSichern();
 }
 
 /* 50:50 — zwei falsche Antworten fallen weg. */
@@ -700,13 +873,14 @@ function joker5050() {
     knoepfe[i].classList.add('raus');
   });
 
+  sitzung.raus            = weg.slice();
   sitzung.fuenfzigGenutzt = true;
   sitzung.karteHilfe      = true;
   sitzung.hilfe.fuenfzigFrei--;
   sitzung.hilfe.fuenfzig++;
   stand.hilfen.fuenfzig++;
-  standSichern();
   jokerAnzeigen();
+  sitzungSichern();
 }
 
 /* Aufgeben: zeigt die Lösung, ohne als Fehler zu zählen. Das Wort bleibt
@@ -778,6 +952,7 @@ function sitzungBeenden() {
     $('endeListeHuelle').classList.add('versteckt');
   }
 
+  laufendeSitzungLoeschen();
   standSichern();
   startAufbauen();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -785,6 +960,7 @@ function sitzungBeenden() {
 
 function zurStartansicht() {
   sitzung = null;
+  laufendeSitzungLoeschen();
   $('kartePanel').classList.add('versteckt');
   $('endePanel').classList.add('versteckt');
   $('start').classList.remove('versteckt');
@@ -820,6 +996,8 @@ function startAufbauen() {
     kachel(neu, 'noch nie gesehen') +
     kachel(sitzt, 'sitzen (Fach 4–5)') +
     kachel(stand.besteSerie, 'beste Serie');
+
+  fortsetzenAnbieten();
 
   var hinweis = '';
   if (!pool.length) hinweis = 'Kein Bereich ausgewählt — bitte in den Einstellungen mindestens einen anhaken.';
@@ -1291,6 +1469,8 @@ function verdrahten() {
 
   /* Sitzungssteuerung */
   $('btnStart').addEventListener('click', sitzungStarten);
+  $('btnFortsetzen').addEventListener('click', sitzungFortsetzen);
+  $('btnVerwerfen').addEventListener('click', sitzungVerwerfen);
   $('btnTipp').addEventListener('click', jokerTipp);
   $('btn5050').addEventListener('click', joker5050);
   $('btnAufloesen').addEventListener('click', jokerAufloesen);

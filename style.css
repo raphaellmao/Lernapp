@@ -897,6 +897,36 @@ select:focus, .suche:focus {
 
 .toast.sichtbar { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- Unterbrochene Sitzung ---------- */
+
+.fortsetzen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: var(--akzent-hell);
+  border: 1px solid color-mix(in srgb, var(--akzent) 30%, transparent);
+  border-radius: 11px;
+}
+
+.fortsetzen-titel {
+  font-family: var(--serif);
+  font-size: 16.5px;
+  font-weight: 600;
+  color: var(--akzent);
+}
+
+.fortsetzen-info {
+  font-size: 13.5px;
+  color: var(--text-leise);
+  margin-top: 2px;
+}
+
+.fortsetzen-knoepfe { display: flex; gap: 8px; flex-shrink: 0; }
+
 /* ---------- Joker ---------- */
 
 .joker {
@@ -1011,6 +1041,8 @@ html[data-thema="dunkel"] .joker-zahl { color: #1a1713; }
   .frage { font-size: 30px; }
   .frage.frage-lang { font-size: 21px; }
   .ende-quote { font-size: 48px; }
+  .fortsetzen { flex-direction: column; align-items: stretch; }
+  .fortsetzen-knoepfe button { flex: 1; }
   .joker { gap: 6px; }
   .joker-btn { flex: 1; justify-content: center; padding: 9px 8px; font-size: 13.5px; }
   .joker-taste { display: none; }
